@@ -1,0 +1,38 @@
+import win32com.client
+
+try:
+    # Создаем экземпляр приложения НаноКАД
+    nanoCAD = win32com.client.Dispatch("NanoCAD.Application")
+    print("НаноКАД успешно запущен")
+
+    # Получаем активный документ
+    doc = nanoCAD.ActiveDocument
+    print("Активный документ получен")
+
+    # Получаем пространство модели
+    modelSpace = doc.ModelSpace
+
+    # Запрашиваем у пользователя точку для размещения куба
+    print("Пожалуйста, кликните на рабочую область, чтобы разместить куб...")
+    point = doc.Utility.GetPoint()
+
+    # Создаем куб в выбранной точке
+    size = 50  # размер куба
+    cube = modelSpace.AddBox(point, size, size, size)
+    print(f"Создан куб в точке {point}")
+
+    # Обновляем экран
+    doc.Regen(1)
+
+    print("Операция успешно выполнена")
+
+except Exception as e:
+    print(f"Произошла ошибка: {str(e)}")
+
+finally:
+    # Освобождаем COM-объекты
+    if 'doc' in locals():
+        doc = None
+    if 'nanoCAD' in locals():
+        nanoCAD = None
+    print("COM-объекты освобождены")
