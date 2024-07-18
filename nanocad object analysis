@@ -1,0 +1,54 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QTextEdit
+import win32com.client
+
+class ObjectAnalyzer(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        analyze_button = QPushButton('Анализировать объект')
+        analyze_button.clicked.connect(self.analyze_object)
+        layout.addWidget(analyze_button)
+
+        self.output = QTextEdit()
+        layout.addWidget(self.output)
+
+        self.setWindowTitle('Анализатор объектов НаноКАД')
+        self.setGeometry(300, 300, 600, 400)
+        self.show()
+
+    def analyze_object(self):
+        try:
+            nanoCAD = win32com.client.Dispatch("NanoCAD.Application")
+            doc = nanoCAD.ActiveDocument
+            
+            print("Выберите объект в НаноКАД...")
+            selected_object = doc.Utility.GetEntity()
+            
+            if selected_object:
+                obj = selected_object[0]
+                self.output.clear()
+                self.output.append(f"Анализ объекта {obj.ObjectName}:\n")
+                
+                for attr in dir(obj):
+                    try:
+                        value = getattr(obj, attr)
+                        if not callable(value):
+                            self.output.append(f"{attr}: {value}")
+                    except:
+                        self.output.append(f"{attr}: Недоступно")
+            else:
+                self.output.setText("Объект не выбран")
+
+        except Exception as e:
+            self.output.setText(f"Произошла ошибка: {str(e)}")
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = ObjectAnalyzer()
+    sys.exit(app.exec_())
