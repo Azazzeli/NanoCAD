@@ -1,0 +1,35 @@
+ import win32com.client
+
+try:
+    # Создаем экземпляр приложения НаноКАД
+    nanoCAD = win32com.client.Dispatch("NanoCAD.Application")
+    print("НаноКАД успешно запущен")
+
+    # Получаем активный документ
+    doc = nanoCAD.ActiveDocument
+    print("Активный документ получен")
+
+    # Запрашиваем у пользователя выбор объекта
+    print("Пожалуйста, выберите объект в НаноКАД...")
+    selected_object = doc.Utility.GetEntity()
+    
+    if selected_object:
+        # Получаем объем выбранного объекта
+        volume = selected_object[0].Volume
+        print(f"Объем выбранного объекта: {volume} кубических единиц")
+    else:
+        print("Объект не выбран")
+
+    # Обновляем экран
+    doc.Regen(1)
+
+except Exception as e:
+    print(f"Произошла ошибка: {str(e)}")
+
+finally:
+    # Освобождаем COM-объекты
+    if 'doc' in locals():
+        doc = None
+    if 'nanoCAD' in locals():
+        nanoCAD = None
+    print("COM-объекты освобождены")
