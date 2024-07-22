@@ -1,0 +1,117 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox
+import win32com.client
+
+class PanelCreatorForm(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
+
+        self.width_input = self.create_input_field("Ширина панели:")
+        self.height_input = self.create_input_field("Высота панели:")
+        self.thickness_input = self.create_input_field("Толщина панели:")
+
+        main_layout.addLayout(self.width_input[0])
+        main_layout.addLayout(self.height_input[0])
+        main_layout.addLayout(self.thickness_input[0])
+
+        create_panel_button = QPushButton('Создать панель')
+        create_panel_button.clicked.connect(self.create_panel)
+        main_layout.addWidget(create_panel_button)
+
+        self.hole_diameter = self.create_input_field("Диаметр отверстия:")
+        main_layout.addLayout(self.hole_diameter[0])
+
+        create_hole_button = QPushButton('Добавить отверстие')
+        create_hole_button.clicked.connect(self.create_hole)
+        main_layout.addWidget(create_hole_button)
+
+        # Новые поля для подрезки
+        self.cut_width = self.create_input_field("Ширина подрезки:")
+        self.cut_length = self.create_input_field("Длина подрезки:")
+        main_layout.addLayout(self.cut_width[0])
+        main_layout.addLayout(self.cut_length[0])
+
+        # Выпадающий список для выбора угла
+        corner_layout = QHBoxLayout()
+        corner_layout.addWidget(QLabel("Угол для подрезки:"))
+        self.corner_combo = QComboBox()
+        self.corner_combo.addItems(["Верхний левый", "Верхний правый", "Нижний левый", "Нижний правый"])
+        corner_layout.addWidget(self.corner_combo)
+        main_layout.addLayout(corner_layout)
+
+        cut_corner_button = QPushButton('Подрезать угол')
+        cut_corner_button.clicked.connect(self.cut_corner)
+        main_layout.addWidget(cut_corner_button)
+
+        self.setWindowTitle('Создание панели с отверстиями и подрезкой')
+        self.show()
+
+    def create_input_field(self, label):
+        layout = QHBoxLayout()
+        layout.addWidget(QLabel(label))
+        input_field = QLineEdit()
+        layout.addWidget(input_field)
+        return layout, input_field
+
+    def create_panel(self):
+        # ... (оставляем без изменений)
+
+    def create_hole(self):
+        # ... (оставляем без изменений)
+
+    def cut_corner(self):
+        try:
+            nanoCAD = win32com.client.Dispatch("NanoCAD.Application")
+            doc = nanoCAD.ActiveDocument
+            modelSpace = doc.ModelSpace
+
+            cut_width = float(self.cut_width[1].text())
+            cut_length = float(self.cut_length[1].text())
+            corner = self.corner_combo.currentText()
+
+            # Получаем последний созданный объект (предполагаем, что это наша панель)
+            panel = modelSpace.Item(modelSpace.Count)
+
+            # Получаем размеры и положение панели
+            min_point = panel.GetBoundingBox()[0]
+            max_point = panel.GetBoundingBox()[1]
+            panel_width = max_point[0] - min_point[0]
+            panel_height = max_point[1] - min_point[1]
+            panel_thickness = max_point[2] - min_point[2]
+
+            # Определяем точку начала подрезки в зависимости от выбранного угла
+            if corner == "Верхний левый":
+                start_point = min_point
+            elif corner == "Верхний правый":
+                start_point = (max_point[0], max_point[1], min_point[2])
+            elif corner == "Нижний левый":
+                start_point = (min_point[0], min_point[1], min_point[2])
+            else:  # Нижний правый
+                start_point = (max_point[0], min_point[1], min_point[2])
+
+            # Создаем прямоугольник для подрезки
+            cut_box = modelSpace.AddBox(start_point, cut_width, cut_length, panel_thickness)
+
+            # Выполняем операцию вычитания
+            result = panel.Boolean(2, cut_box)
+
+            doc.Regen(1)
+            print(f"Выполнена подрезка угла {corner} размером {cut_width}x{cut_length}")
+
+        except Exception as e:
+            print(f"Произошла ошибка при подрезке угла: {str(e)}")
+        finally:
+            if 'doc' in locals():
+                doc = None
+            if 'nanoCAD' in locals():
+                nanoCAD = None
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = PanelCreatorForm()
+    sys.exit(app.exec_())
