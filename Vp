@@ -44,3 +44,89 @@ def cut_corner(self):
             doc = None
         if 'nanoCAD' in locals():
             nanoCAD = None
+
+def create_hole(self):
+    try:
+        nanoCAD = win32com.client.Dispatch("NanoCAD.Application")
+        doc = nanoCAD.ActiveDocument
+        modelSpace = doc.ModelSpace
+
+        diameter = float(self.holeDiameterInput.text())
+        target = self.holeTarget.currentText()
+
+        if target == "Основная панель":
+            panel = self.panel
+            thickness = float(self.thicknessInput.text())
+        else:  # Изоляция
+            panel = self.isolation
+            thickness = float(self.isolationThicknessInput.text())
+
+        if panel is None:
+            raise ValueError(f"{target} не создана")
+
+        # Получаем размеры и ориентацию панели
+        min_point = panel.GetBoundingBox()[0]
+        max_point = panel.GetBoundingBox()[1]
+        panel_width = max_point[0] - min_point[0]
+        panel_height = max_point[2] - min_point[2]  # Используем Z вместо Y для высоты
+
+        print(f"Укажите центр отверстия в {target}:")
+        center_point = doc.Utility.GetPoint()
+
+        # Создаем цилиндр с высотой, равной толщине панели
+        cylinder = modelSpace.AddCylinder(center_point, diameter / 2, thickness)
+
+        result = panel.Boolean(2, cylinder)
+        doc.Regen(1)
+
+        print(f'Создано отверстие диаметром {diameter} в {target} в точке {center_point}')
+    except Exception as e:
+        self.show_error_message(f'Произошла ошибка при создании отверстия: {str(e)}')
+    finally:
+        if 'doc' in locals():
+            doc = None
+        if 'nanoCAD' in locals():
+            nanoCAD = None
+
+def create_rectangular_cutout(self):
+    try:
+        width = float(self.cutoutWidthInput.text())
+        height = float(self.cutoutHeightInput.text())
+        x = float(self.cutoutXInput.text())
+        y = float(self.cutoutYInput.text())
+
+        nanoCAD = win32com.client.Dispatch("NanoCAD.Application")
+        doc = nanoCAD.ActiveDocument
+        modelSpace = doc.ModelSpace
+
+        if self.panel is None or self.isolation is None:
+            raise ValueError("Панель или изоляция не созданы")
+
+        # Получаем размеры и ориентацию панели
+        min_point = self.panel.GetBoundingBox()[0]
+        max_point = self.panel.GetBoundingBox()[1]
+        panel_width = max_point[0] - min_point[0]
+        panel_height = max_point[2] - min_point[2]  # Используем Z вместо Y для высоты
+        panel_thickness = max_point[1] - min_point[1]
+
+        # Определяем, какой размер больше: ширина или высота
+        is_vertical = panel_height > panel_width
+
+        # Создаем куб для выреза
+        if is_vertical:
+            cutout = modelSpace.AddBox((x, min_point[1], y), width, panel_thickness, height)
+        else:
+            cutout = modelSpace.AddBox((x, y, min_point[2]), width, height, panel_thickness)
+
+        self.panel.Boolean(2, cutout)
+        self.isolation.Boolean(2, cutout)
+
+        doc.Regen(1)
+        print(f'Создан прямоугольный вырез размером {width}x{height} в позиции ({x}, {y})')
+    except Exception as e:
+        self.show_error_message(f'Произошла ошибка при создании выреза: {str(e)}')
+    finally:
+        if 'doc' in locals():
+            doc = None
+        if 'nanoCAD' in locals():
+            nanoCAD = None
