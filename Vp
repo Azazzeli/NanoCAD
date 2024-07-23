@@ -1,0 +1,46 @@
+def cut_corner(self):
+    try:
+        nanoCAD = win32com.client.Dispatch("NanoCAD.Application")
+        doc = nanoCAD.ActiveDocument
+        modelSpace = doc.ModelSpace
+
+        cut_width = float(self.cutWidthInput.text())
+        cut_length = float(self.cutLengthInput.text())
+        target = self.cutTarget.currentText()
+
+        if target == "Основная панель":
+            panel_thickness = float(self.thicknessInput.text())
+            panel = self.panel
+        else:  # Изоляция
+            panel_thickness = float(self.isolationThicknessInput.text())
+            panel = self.isolation
+
+        print(f"Укажите угол для подрезки в {target}:")
+        cut_point = doc.Utility.GetPoint()
+
+        # Получаем размеры и ориентацию панели
+        min_point = panel.GetBoundingBox()[0]
+        max_point = panel.GetBoundingBox()[1]
+        panel_width = max_point[0] - min_point[0]
+        panel_height = max_point[2] - min_point[2]  # Используем Z вместо Y для высоты
+
+        # Определяем, какой размер больше: ширина или высота
+        is_vertical = panel_height > panel_width
+
+        # Создаем куб для подрезки
+        if is_vertical:
+            cut_box = modelSpace.AddBox(cut_point, cut_width * 2, panel_thickness * 2, cut_length * 2)
+        else:
+            cut_box = modelSpace.AddBox(cut_point, cut_width * 2, cut_length * 2, panel_thickness * 2)
+
+        result = panel.Boolean(2, cut_box)
+        doc.Regen(1)
+
+        print(f'Выполнена подрезка угла размером {cut_width}x{cut_length} в {target}')
+    except Exception as e:
+        self.show_error_message(f'Произошла ошибка при подрезке угла: {str(e)}')
+    finally:
+        if 'doc' in locals():
+            doc = None
+        if 'nanoCAD' in locals():
+            nanoCAD = None
