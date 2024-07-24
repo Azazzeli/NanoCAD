@@ -1,0 +1,30 @@
+import win32com.client
+
+# Подключаемся к приложению ModelStudio
+app = win32com.client.GetObject(Class="ModelStudio.Application")
+
+# Создаем новый сегмент трубы
+segment = app.CreateObject("WrSegment")
+
+# Устанавливаем параметры трубы
+segment.Diameter = 100  # диаметр в мм
+segment.Length = 1000   # длина в мм
+segment.Material = "Steel"  # материал
+
+# Устанавливаем начальную точку трубы
+segment.StartPoint.X = 0
+segment.StartPoint.Y = 0
+segment.StartPoint.Z = 0
+
+# Устанавливаем конечную точку трубы
+segment.EndPoint.X = 1000
+segment.EndPoint.Y = 0
+segment.EndPoint.Z = 0
+
+# Добавляем трубу в модель
+app.ActiveDocument.ModelSpace.AddEntity(segment)
+
+# Обновляем отображение
+app.ActiveDocument.Regen()
+
+print("Труба успешно создана")
