@@ -8,35 +8,35 @@ doc = ncad.ActiveDocument
 
 try:
     # Создаем новый трубопровод
-    pipeline = doc.ModelPipeline.Create()
+    pipeline = doc.ModelSpace.AddCustomObject("ModelPipeline")
 
-    # Создаем первый сегмент трубы
-    segment1 = pipeline.WrSegments.Add()
-    segment1.StartPoint = ncad.Point(0, 0, 0)
-    segment1.EndPoint = ncad.Point(100, 0, 0)
-    segment1.Diameter = 50
+    # Создаем начальный терминатор
+    start_terminator = pipeline.WrTerminators.Add()
+    start_terminator.Position = ncad.Point(0, 0, 0)
 
-    # Создаем второй сегмент трубы
-    segment2 = pipeline.WrSegments.Add()
-    segment2.StartPoint = segment1.EndPoint
-    segment2.EndPoint = ncad.Point(100, 100, 0)
-    segment2.Diameter = 50
+    # Создаем сегмент трубы
+    segment = pipeline.WrSegments.Add()
+    segment.PointStart = start_terminator.Position
+    segment.PointEnd = ncad.Point(100, 100, 0)
+    segment.Diameter = 50
 
-    # Добавляем отвод (колено) между сегментами
-    elbow = pipeline.WrElbows.Add()
-    elbow.StartPoint = segment1.EndPoint
-    elbow.EndPoint = segment2.StartPoint
-    elbow.Diameter = 50
-    elbow.Angle = 90  # угол в градусах
+    # Создаем конечный терминатор
+    end_terminator = pipeline.WrTerminators.Add()
+    end_terminator.Position = segment.PointEnd
 
-    print("Трубопровод успешно создан")
+    print("Труба успешно создана")
 
     # Обновляем модель
     doc.ModelUpdate()
     print("Модель обновлена")
 
+    # Выводим информацию о созданной трубе
+    print(f"Начальный терминатор: {start_terminator.Position}")
+    print(f"Сегмент трубы: от {segment.PointStart} до {segment.PointEnd}")
+    print(f"Конечный терминатор: {end_terminator.Position}")
+
 except Exception as e:
-    print(f"Ошибка при создании трубопровода: {e}")
+    print(f"Ошибка при создании трубы: {e}")
 
 # Не забудьте освободить COM-объекты
 del doc
