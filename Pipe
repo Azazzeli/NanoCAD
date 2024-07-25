@@ -1,43 +1,72 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
 import win32com.client
+import pythoncom
 
-# Создаем COM-объект nanoCAD
-ncad = win32com.client.Dispatch("nanoCAD.Application")
+class PipelineEditor(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+        self.connectToNanoCAD()
 
-# Получаем доступ к активному документу
-doc = ncad.ActiveDocument
+    def initUI(self):
+        self.setWindowTitle('Pipeline Editor')
+        layout = QVBoxLayout()
 
-try:
-    # Создаем новый трубопровод
-    pipeline = doc.ModelSpace.AddCustomObject("ModelPipeline")
+        # Создаем поля ввода для каждого параметра
+        self.fields = {}
+        parameters = ['StartPoint', 'EndPoint', 'Diameter']
+        for param in parameters:
+            hbox = QHBoxLayout()
+            hbox.addWidget(QLabel(param))
+            self.fields[param] = QLineEdit()
+            hbox.addWidget(self.fields[param])
+            layout.addLayout(hbox)
 
-    # Создаем начальный терминатор
-    start_terminator = pipeline.WrTerminators.Add()
-    start_terminator.Position = ncad.Point(0, 0, 0)
+        # Кнопка для применения изменений
+        self.applyButton = QPushButton('Apply Changes')
+        self.applyButton.clicked.connect(self.applyChanges)
+        layout.addWidget(self.applyButton)
 
-    # Создаем сегмент трубы
-    segment = pipeline.WrSegments.Add()
-    segment.PointStart = start_terminator.Position
-    segment.PointEnd = ncad.Point(100, 100, 0)
-    segment.Diameter = 50
+        self.setLayout(layout)
 
-    # Создаем конечный терминатор
-    end_terminator = pipeline.WrTerminators.Add()
-    end_terminator.Position = segment.PointEnd
+    def connectToNanoCAD(self):
+        pythoncom.CoInitialize()
+        self.ncad = win32com.client.Dispatch("nanoCAD.Application")
+        self.doc = self.ncad.ActiveDocument
+        self.pipeline = self.findPipeline()
+        if self.pipeline:
+            self.updateFields()
 
-    print("Труба успешно создана")
+    def findPipeline(self):
+        for obj in self.doc.ModelSpace:
+            if hasattr(obj, 'ObjectName') and 'pipeline' in obj.ObjectName.lower():
+                return obj
+        return None
 
-    # Обновляем модель
-    doc.ModelUpdate()
-    print("Модель обновлена")
+    def updateFields(self):
+        if self.pipeline:
+            self.fields['StartPoint'].setText(str(self.pipeline.StartPoint))
+            self.fields['EndPoint'].setText(str(self.pipeline.EndPoint))
+            self.fields['Diameter'].setText(str(self.pipeline.Diameter))
 
-    # Выводим информацию о созданной трубе
-    print(f"Начальный терминатор: {start_terminator.Position}")
-    print(f"Сегмент трубы: от {segment.PointStart} до {segment.PointEnd}")
-    print(f"Конечный терминатор: {end_terminator.Position}")
+    def applyChanges(self):
+        if self.pipeline:
+            try:
+                self.pipeline.StartPoint = eval(self.fields['StartPoint'].text())
+                self.pipeline.EndPoint = eval(self.fields['EndPoint'].text())
+                self.pipeline.Diameter = float(self.fields['Diameter'].text())
+                self.doc.ModelUpdate()
+                print("Changes applied successfully")
+            except Exception as e:
+                print(f"Error applying changes: {e}")
 
-except Exception as e:
-    print(f"Ошибка при создании трубы: {e}")
+    def closeEvent(self, event):
+        pythoncom.CoUninitialize()
+        event.accept()
 
-# Не забудьте освободить COM-объекты
-del doc
-del ncad
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = PipelineEditor()
+    ex.show()
+    sys.exit(app.exec_())
